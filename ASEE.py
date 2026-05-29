@@ -531,3 +531,5 @@ st.markdown(f"""
   one discovery at a time.<br><br>
   <strong>University of Nairobi · Institute of Tropical and Infectious Diseases</strong>
   </div>
+</div>
+""", unsafe_allow_html=True)
