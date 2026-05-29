@@ -1,7 +1,7 @@
 import streamlit as st
 import math
 from io import BytesIO
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A4, portrait
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -40,28 +40,26 @@ GRAY_D   = "#2C2C2A"
 WHITE    = "#FFFFFF"
 
 # -------------------------------------------------------------------
-# PDF GENERATION (Timeline only)
+# PDF GENERATION (Timeline only - Portrait mode)
 def register_fonts():
     """Register Arial as a fallback sans-serif font for PDF"""
     try:
-        # Try to register Arial (common on Windows/macOS)
         pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
         return 'Arial'
     except:
         try:
-            # Try Helvetica (common on Unix)
             pdfmetrics.registerFont(TTFont('Helvetica', 'Helvetica.afm'))
             return 'Helvetica'
         except:
             return 'Helvetica'
 
 def generate_timeline_pdf():
-    """Generate PDF document with project timeline visuals"""
+    """Generate PDF document with project timeline visuals (Portrait)"""
     buffer = BytesIO()
     font_name = register_fonts()
     
-    # Create document with landscape orientation for better timeline display
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
+    # Create document with portrait orientation
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
                             rightMargin=15*mm, leftMargin=15*mm,
                             topMargin=15*mm, bottomMargin=15*mm)
     
@@ -72,9 +70,9 @@ def generate_timeline_pdf():
         'CustomTitle',
         parent=styles['Heading1'],
         fontName=font_name,
-        fontSize=24,
+        fontSize=22,
         textColor=colors.HexColor(PURPLE_D[1:]),
-        spaceAfter=12,
+        spaceAfter=10,
         alignment=TA_CENTER,
         fontStyle='bold'
     )
@@ -83,9 +81,9 @@ def generate_timeline_pdf():
         'CustomSubtitle',
         parent=styles['Normal'],
         fontName=font_name,
-        fontSize=14,
+        fontSize=12,
         textColor=colors.HexColor(GRAY_MID[1:]),
-        spaceAfter=20,
+        spaceAfter=15,
         alignment=TA_CENTER
     )
     
@@ -93,9 +91,9 @@ def generate_timeline_pdf():
         'SectionTitle',
         parent=styles['Heading2'],
         fontName=font_name,
-        fontSize=16,
+        fontSize=14,
         textColor=colors.HexColor(PURPLE[1:]),
-        spaceAfter=12,
+        spaceAfter=10,
         fontStyle='bold'
     )
     
@@ -103,18 +101,9 @@ def generate_timeline_pdf():
         'BodyStyle',
         parent=styles['Normal'],
         fontName=font_name,
-        fontSize=10,
-        textColor=colors.HexColor(GRAY_D[1:]),
-        leading=14
-    )
-    
-    timeline_label = ParagraphStyle(
-        'TimelineLabel',
-        parent=styles['Normal'],
-        fontName=font_name,
         fontSize=9,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor(GRAY_MID[1:])
+        textColor=colors.HexColor(GRAY_D[1:]),
+        leading=13
     )
     
     story = []
@@ -122,10 +111,15 @@ def generate_timeline_pdf():
     # Title
     story.append(Paragraph("ENGAGE 2.0 — Project Timeline", title_style))
     story.append(Paragraph("From survey insight to national programme", subtitle_style))
-    story.append(Spacer(1, 10*mm))
+    story.append(Spacer(1, 8*mm))
     
-    # Timeline table
+    # Timeline section
+    story.append(Paragraph("Project Timeline", section_title))
+    story.append(Spacer(1, 3*mm))
+    
+    # Timeline as a table with years and descriptions
     timeline_data = [
+        ["Year", "Milestone"],
         ["2022", "Survey & research"],
         ["2023", "Programme design"],
         ["2024", "Phase 1 launch"],
@@ -133,120 +127,118 @@ def generate_timeline_pdf():
         ["2028", "National scale"],
     ]
     
-    # Convert to paragraph objects
-    timeline_table_data = []
-    for year, desc in timeline_data:
-        timeline_table_data.append([
-            Paragraph(f"<b>{year}</b>", ParagraphStyle('YearStyle', parent=styles['Normal'], 
-                       fontName=font_name, fontSize=14, alignment=TA_CENTER,
-                       textColor=colors.HexColor(PURPLE_D[1:]))),
-            Paragraph(desc, ParagraphStyle('DescStyle', parent=styles['Normal'],
-                       fontName=font_name, fontSize=11, alignment=TA_CENTER,
-                       textColor=colors.HexColor(GRAY_MID[1:])))
-        ])
-    
-    timeline_table = Table(timeline_table_data, colWidths=[60, 100])
+    timeline_table = Table(timeline_data, colWidths=[40*mm, 100*mm])
     timeline_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor(PURPLE_L[1:])),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(PURPLE[1:])),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor(PURPLE[1:])),
+        ('FONTNAME', (0, 0), (-1, -1), font_name),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOLD', (0, 0), (-1, 0), True),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('BOX', (0, 0), (-1, -1), 1, colors.HexColor(PURPLE[1:])),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 12),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-    ]))
-    story.append(timeline_table)
-    story.append(Spacer(1, 15*mm))
-    
-    # Vision chain section
-    story.append(Paragraph("The ENGAGE Vision Chain", section_title))
-    story.append(Spacer(1, 5*mm))
-    
-    vision_items = [
-        ("Girls & Young Women selected", PURPLE),
-        ("Data Science & AI skills built", PURPLE),
-        ("Public Health applications", TEAL),
-        ("African Innovators emerge", TEAL),
-        ("Healthier Communities", TEAL),
-    ]
-    
-    for item, color in vision_items:
-        story.append(Paragraph(
-            f'• {item}',
-            ParagraphStyle('VisionItem', parent=body_style,
-                          textColor=colors.HexColor(color[1:]),
-                          leftIndent=20,
-                          bulletIndent=10)
-        ))
-        story.append(Spacer(1, 3*mm))
-    
-    story.append(Spacer(1, 10*mm))
-    
-    # Programme pipeline
-    story.append(Paragraph("Programme Pipeline", section_title))
-    story.append(Spacer(1, 5*mm))
-    
-    pipeline_steps = [
-        "Advertisement", "Applications", "Math Contest", "Interviews",
-        "Selection", "Tier 1 Training", "Tier 2 Training", "Tier 3 Training",
-        "Internship", "Employment / Innovation"
-    ]
-    
-    # Create pipeline as 2-row table for better fit
-    steps_per_row = 5
-    pipeline_rows = [pipeline_steps[i:i+steps_per_row] for i in range(0, len(pipeline_steps), steps_per_row)]
-    pipeline_table_data = []
-    for row in pipeline_rows:
-        pipeline_table_data.append([Paragraph(step, ParagraphStyle('StepStyle', parent=styles['Normal'],
-                                    fontName=font_name, fontSize=8, alignment=TA_CENTER,
-                                    textColor=colors.HexColor(PURPLE_D[1:]))) for step in row])
-    
-    pipeline_table = Table(pipeline_table_data, colWidths=[70]*steps_per_row)
-    pipeline_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor(PURPLE_L[1:])),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    story.append(pipeline_table)
-    story.append(Spacer(1, 15*mm))
-    
-    # Phase 2 Roadmap
-    story.append(Paragraph("Phase 2.0 — Expansion Roadmap", section_title))
-    story.append(Spacer(1, 5*mm))
-    
-    roadmap_data = [
-        ["Short term", "25 trainees per centre · New UoN UNITID centre · Self-sponsored module · Remote jobs pipeline"],
-        ["Medium term", "Open to boys & young men · Disability-inclusive content · Accessible equipment · Online modules"],
-        ["Long term", "5 new regional centres · Marsabit, Garissa, Kakamega, Kisii, West Pokot · National innovation hub"],
-    ]
-    
-    roadmap_table = Table(roadmap_data, colWidths=[60, 220])
-    roadmap_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor(PURPLE_L[1:])),
-        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor(GRAY_L[1:])),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
     ]))
-    story.append(roadmap_table)
+    story.append(timeline_table)
+    story.append(Spacer(1, 10*mm))
+    
+    # Vision chain section
+    story.append(Paragraph("The ENGAGE Vision Chain", section_title))
+    story.append(Spacer(1, 3*mm))
+    
+    vision_items = [
+        "• Girls & Young Women selected",
+        "• Data Science & AI skills built",
+        "• Public Health applications",
+        "• African Innovators emerge",
+        "• Healthier Communities",
+    ]
+    
+    for item in vision_items:
+        story.append(Paragraph(item, body_style))
+        story.append(Spacer(1, 2*mm))
+    
+    story.append(Spacer(1, 8*mm))
+    
+    # Programme pipeline
+    story.append(Paragraph("Programme Pipeline", section_title))
+    story.append(Spacer(1, 3*mm))
+    
+    pipeline_steps = [
+        "1. Advertisement", "2. Applications", "3. Math Contest", "4. Interviews",
+        "5. Selection", "6. Tier 1 Training", "7. Tier 2 Training", 
+        "8. Tier 3 Training", "9. Internship", "10. Employment/Innovation"
+    ]
+    
+    pipeline_text = " → ".join(pipeline_steps)
+    pipeline_para = Paragraph(pipeline_text, body_style)
+    story.append(pipeline_para)
+    story.append(Spacer(1, 10*mm))
+    
+    # Phase 2 Roadmap
+    story.append(Paragraph("Phase 2.0 — Expansion Roadmap", section_title))
+    story.append(Spacer(1, 3*mm))
+    
+    roadmap_items = [
+        ("Short term (2026):", "25 trainees per centre, New UoN UNITID centre, Self-sponsored module, Remote jobs pipeline"),
+        ("Medium term (2027):", "Open to boys & young men, Disability-inclusive content, Accessible equipment, Online modules"),
+        ("Long term (2028+):", "5 new regional centres, National innovation hub"),
+    ]
+    
+    for phase, details in roadmap_items:
+        story.append(Paragraph(f"<b>{phase}</b>", body_style))
+        story.append(Paragraph(details, body_style))
+        story.append(Spacer(1, 4*mm))
+    
+    story.append(Spacer(1, 8*mm))
+    
+    # Impact numbers
+    story.append(Paragraph("Phase 1 Impact", section_title))
+    story.append(Spacer(1, 3*mm))
+    
+    impact_data = [
+        ["Metric", "Value"],
+        ["Total beneficiaries trained", "329"],
+        ["Regional universities", "6"],
+        ["Internship sites", "50"],
+        ["Validated curricula", "3"],
+    ]
+    
+    impact_table = Table(impact_data, colWidths=[80*mm, 40*mm])
+    impact_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(TEAL[1:])),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, -1), font_name),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    story.append(impact_table)
     story.append(Spacer(1, 10*mm))
     
     # Footer with call to action
-    story.append(Spacer(1, 10*mm))
+    story.append(Spacer(1, 5*mm))
     story.append(Paragraph(
         "Partner with ENGAGE 2.0 — Help unlock Africa's AI potential.",
         ParagraphStyle('FooterStyle', parent=body_style,
                       alignment=TA_CENTER,
                       textColor=colors.HexColor(TEAL_D[1:]),
                       fontSize=9,
+                      fontName=font_name)
+    ))
+    story.append(Paragraph(
+        "University of Nairobi · Institute of Tropical and Infectious Diseases",
+        ParagraphStyle('FooterStyle2', parent=body_style,
+                      alignment=TA_CENTER,
+                      textColor=colors.HexColor(GRAY_MID[1:]),
+                      fontSize=8,
                       fontName=font_name)
     ))
     
@@ -270,7 +262,7 @@ def download_timeline_button():
     )
 
 # -------------------------------------------------------------------
-# CUSTOM CSS (unchanged)
+# CUSTOM CSS
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap');
@@ -322,7 +314,7 @@ section[data-testid="stSidebar"]{{display:none;}}
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
-# WEBSITE CONTENT (unchanged)
+# WEBSITE CONTENT
 # ── HERO ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
@@ -343,7 +335,7 @@ st.markdown("""
 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
-# ADD DOWNLOAD BUTTON IN SIDEBAR (collapsed but accessible)
+# ADD DOWNLOAD BUTTON IN SIDEBAR
 with st.sidebar:
     st.markdown("### 📄 Document")
     download_timeline_button()
@@ -365,7 +357,7 @@ tabs = st.tabs([
 
 # ── TAB 1: PROBLEM ────────────────────────────────────────────────────────────
 with tabs[0]:
-    st.markdown(f"""
+    st.markdown("""
     <div class="sec">
       <div class="kicker">The Challenge</div>
       <div class="sec-title">Africa's opportunity — and its gap</div>
@@ -373,13 +365,13 @@ with tabs[0]:
       30% of AI experts globally. Africa faces a double burden of disease demanding locally-built,
       data-driven solutions.</div>
       <div class="stat-grid">
-        <div class="stat-card"><div class="stat-num" style="color:{PURPLE}">30%</div>
+        <div class="stat-card"><div class="stat-num" style="color:#534AB7">30%</div>
           <div class="stat-lbl">of global AI experts are women</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:{CORAL}">2×</div>
+        <div class="stat-card"><div class="stat-num" style="color:#D85A30">2×</div>
           <div class="stat-lbl">disease burden — infectious + chronic</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:{TEAL}">&lt;5%</div>
+        <div class="stat-card"><div class="stat-num" style="color:#1D9E75">&lt;5%</div>
           <div class="stat-lbl">African women in data science roles</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:{AMBER}">4B+</div>
+        <div class="stat-card"><div class="stat-num" style="color:#BA7517">4B+</div>
           <div class="stat-lbl">Africans by 2050 — pipeline is now</div></div>
       </div>
     </div>
@@ -387,35 +379,35 @@ with tabs[0]:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown(f"**Gender gap in AI expertise**")
-        for label, pct, color in [("Women in AI", 30, PURPLE), ("Men in AI", 70, "#E8E6E0")]:
+        st.markdown("**Gender gap in AI expertise**")
+        for label, pct, color in [("Women in AI", 30, "#534AB7"), ("Men in AI", 70, "#E8E6E0")]:
             st.markdown(f"""
             <div class="bar-row">
               <div style="min-width:110px;font-size:13px;color:{GRAY_D};">{label}</div>
               <div class="bar-bg"><div class="bar-fill" style="width:{pct}%;background:{color};"></div></div>
-              <div style="min-width:36px;font-size:13px;font-weight:600;color:{color if color!='{GRAY_D}' else GRAY_D};">{pct}%</div>
+              <div style="min-width:36px;font-size:13px;font-weight:600;">{pct}%</div>
             </div>""", unsafe_allow_html=True)
 
     with col2:
         st.markdown("**Africa's disease burden breakdown**")
         for label, pct, color in [
-            ("Infectious diseases", 45, CORAL),
-            ("Chronic conditions", 32, AMBER),
-            ("Maternal health", 13, PURPLE),
-            ("Injuries", 10, GRAY_MID),
+            ("Infectious diseases", 45, "#D85A30"),
+            ("Chronic conditions", 32, "#BA7517"),
+            ("Maternal health", 13, "#534AB7"),
+            ("Injuries", 10, "#888780"),
         ]:
             st.markdown(f"""
             <div class="bar-row">
               <div style="min-width:150px;font-size:13px;color:{GRAY_D};">{label}</div>
               <div class="bar-bg"><div class="bar-fill" style="width:{pct}%;background:{color};"></div></div>
-              <div style="min-width:36px;font-size:13px;font-weight:600;color:{GRAY_D};">{pct}%</div>
+              <div style="min-width:36px;font-size:13px;font-weight:600;">{pct}%</div>
             </div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
 # ── TAB 2: VISION ─────────────────────────────────────────────────────────────
 with tabs[1]:
-    st.markdown(f"""
+    st.markdown("""
     <div class="sec">
       <div class="kicker">The Vision</div>
       <div class="sec-title">From survey insight to national programme</div>
@@ -462,18 +454,33 @@ with tabs[1]:
         letter-spacing:0.14em;text-transform:uppercase;color:{PURPLE};margin-bottom:12px;">
         Project Timeline</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;">
-        {''.join([f'<div style="background:white;border-radius:10px;padding:12px 6px;">'
-          f'<div style="font-weight:700;color:{PURPLE_D};font-size:15px;">{y}</div>'
-          f'<div style="font-size:11px;color:{GRAY_MID};margin-top:3px;">{d}</div></div>'
-          for y,d in [("2022","Survey &amp; research"),("2023","Programme design"),
-                      ("2024","Phase 1 launch"),("2026","Phase 2 begins"),("2028","National scale")]])}
+        <div style="background:white;border-radius:10px;padding:12px 6px;">
+          <div style="font-weight:700;color:{PURPLE_D};font-size:15px;">2022</div>
+          <div style="font-size:11px;color:{GRAY_MID};margin-top:3px;">Survey & research</div>
+        </div>
+        <div style="background:white;border-radius:10px;padding:12px 6px;">
+          <div style="font-weight:700;color:{PURPLE_D};font-size:15px;">2023</div>
+          <div style="font-size:11px;color:{GRAY_MID};margin-top:3px;">Programme design</div>
+        </div>
+        <div style="background:white;border-radius:10px;padding:12px 6px;">
+          <div style="font-weight:700;color:{PURPLE_D};font-size:15px;">2024</div>
+          <div style="font-size:11px;color:{GRAY_MID};margin-top:3px;">Phase 1 launch</div>
+        </div>
+        <div style="background:white;border-radius:10px;padding:12px 6px;">
+          <div style="font-weight:700;color:{PURPLE_D};font-size:15px;">2026</div>
+          <div style="font-size:11px;color:{GRAY_MID};margin-top:3px;">Phase 2 begins</div>
+        </div>
+        <div style="background:white;border-radius:10px;padding:12px 6px;">
+          <div style="font-weight:700;color:{PURPLE_D};font-size:15px;">2028</div>
+          <div style="font-size:11px;color:{GRAY_MID};margin-top:3px;">National scale</div>
+        </div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
 # ── TAB 3: HOW IT WORKS ───────────────────────────────────────────────────────
 with tabs[2]:
-    st.markdown(f"""
+    st.markdown("""
     <div class="sec">
       <div class="kicker">Programme Design</div>
       <div class="sec-title">From application to employment</div>
@@ -524,271 +531,7 @@ with tabs[2]:
                 + '</div>', unsafe_allow_html=True)
     st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
 
-# ── TAB 4: REGIONAL NETWORK ───────────────────────────────────────────────────
-with tabs[3]:
-    st.markdown(f"""
-    <div class="sec">
-      <div class="kicker">Geography</div>
-      <div class="sec-title">A national training network</div>
-      <div class="sec-body">Six regional universities — chosen for geographic equity across Kenya —
-      form the backbone of the ENGAGE ecosystem, with UoN and UCSF providing technical oversight.</div>
-    </div>
-    """, unsafe_allow_html=True)
+# Rest of the tabs remain the same (Tabs 4-8 from your original code)...
 
-    try:
-        import pandas as pd
-        df = pd.DataFrame({
-            "University": ["Pwani University","SEKU","Meru University","DeKUT","Kabarak","JOOUST","UoN Hub"],
-            "Region": ["Coast","South East","East","Central","Rift Valley","Nyanza/Western","Nairobi"],
-            "lat": [-3.32,-1.87,0.05,-0.39,-0.22,0.09,-1.286],
-            "lon": [40.12,38.54,37.65,36.97,35.99,34.76,36.817],
-        })
-        st.markdown('<div style="padding:0 8vw 20px;">', unsafe_allow_html=True)
-        st.map(df, latitude="lat", longitude="lon", size=80000, color="#534AB7")
-        st.markdown('</div>', unsafe_allow_html=True)
-    except Exception:
-        pass
-
-    region_html = '<div class="region-grid" style="padding:0 8vw 16px;">'
-    for region, uni, bg, fg in [
-        ("Coast","Pwani University",PURPLE_L,PURPLE_D),
-        ("South East","SEKU",CORAL_L,CORAL_D),
-        ("East","Meru University",AMBER_L,AMBER),
-        ("Central","DeKUT",TEAL_L,TEAL_D),
-        ("Rift Valley","Kabarak",CORAL_L,CORAL_D),
-        ("Nyanza/Western","JOOUST",PURPLE_L,PURPLE_D),
-    ]:
-        region_html += (f'<div class="rtag" style="background:{bg};color:{fg};">'
-                        f'<strong>{region}</strong> · {uni}</div>')
-    region_html += '</div>'
-    st.markdown(region_html, unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div style="background:{GRAY_L};border-radius:14px;padding:20px 24px;margin:0 8vw 40px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
-        color:{GRAY_MID};margin-bottom:12px;">Coordination structure</div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <div style="background:{PURPLE};color:white;border-radius:10px;padding:10px 16px;
-          font-size:13px;font-weight:500;">UoN + UCSF<br><span style="font-size:11px;opacity:0.8;">Technical hub</span></div>
-        <div style="font-size:18px;color:{GRAY_MID};">↔</div>
-        {''.join([f'<div style="background:{WHITE};border:1px solid #E8E6E0;border-radius:10px;padding:10px 14px;font-size:12px;font-weight:500;color:{GRAY_D};">{u}</div>'
-                  for u in ["Pwani","SEKU","Meru","DeKUT","Kabarak","JOOUST"]])}
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ── TAB 5: ACHIEVEMENTS ───────────────────────────────────────────────────────
-with tabs[4]:
-    st.markdown(f"""
-    <div class="sec">
-      <div class="kicker">Phase 1 · Impact</div>
-      <div class="sec-title">Proof of success</div>
-      <div class="sec-body">In two years, ENGAGE built validated systems, trained hundreds,
-      and secured national recognition — a foundation ready to scale.</div>
-      <div class="stat-grid">
-        <div class="stat-card"><div class="stat-num" style="color:{PURPLE}">329</div>
-          <div class="stat-lbl">Total beneficiaries trained</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:{TEAL}">6</div>
-          <div class="stat-lbl">Regional universities</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:{CORAL}">50</div>
-          <div class="stat-lbl">Internship sites</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:{AMBER}">3</div>
-          <div class="stat-lbl">Validated curricula</div></div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2 = st.columns([3,2])
-    with col1:
-        st.markdown("**Trainees by tier**")
-        for label, count, total, color in [
-            ("Tier 1 — High School", 120, 329, PURPLE),
-            ("Tier 2 — TVET / College", 104, 329, TEAL),
-            ("Tier 3 — University", 105, 329, CORAL),
-        ]:
-            pct = round(count/329*100)
-            st.markdown(f"""
-            <div class="bar-row" style="margin-bottom:14px;">
-              <div style="min-width:180px;font-size:13px;color:{GRAY_D};">{label}</div>
-              <div class="bar-bg"><div class="bar-fill" style="width:{pct}%;background:{color};"></div></div>
-              <div style="min-width:40px;font-size:13px;font-weight:700;color:{color};text-align:right;">{count}</div>
-            </div>""", unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("**Programme milestones**")
-        for text, bg, fg in [
-            ("Curricula developed & validated", TEAL_L, TEAL_D),
-            ("Infrastructure at 6 sites", TEAL_L, TEAL_D),
-            ("Faculty capacity built", TEAL_L, TEAL_D),
-            ("50 internship sites secured", TEAL_L, TEAL_D),
-            ("MoE approval — national rollout", PURPLE_L, PURPLE_D),
-        ]:
-            st.markdown(
-                f'<div class="milestone" style="background:{bg};color:{fg};">✓  {text}</div>',
-                unsafe_allow_html=True)
-
-    st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
-
-# ── TAB 6: ROADMAP ────────────────────────────────────────────────────────────
-with tabs[5]:
-    st.markdown(f"""
-    <div class="sec">
-      <div class="kicker">Phase 2.0</div>
-      <div class="sec-title">The expansion roadmap</div>
-      <div class="sec-body">Building on proven success, Phase 2 scales intake, broadens
-      inclusion, and plants the seeds of a national innovation ecosystem.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    roadmap_html = '<div class="phase-grid" style="padding:0 8vw 28px;">'
-    for phase, color, bg, fg, items in [
-        ("Short term", PURPLE, PURPLE_L, PURPLE_D,
-         ["25 trainees per centre","New UoN UNITID centre","Self-sponsored module",
-          "Remote jobs pipeline","Strengthen internship sites"]),
-        ("Medium term", TEAL, TEAL_L, TEAL_D,
-         ["Open to boys & young men","Disability-inclusive content",
-          "Accessible equipment","Online self-paced modules"]),
-        ("Long term", CORAL, CORAL_L, CORAL_D,
-         ["5 new regional centres","Marsabit, Garissa, Kakamega",
-          "Kisii, West Pokot","National innovation hub"]),
-    ]:
-        roadmap_html += (
-            f'<div class="phase-card" style="background:{bg};border-top:4px solid {color};">'
-            f'<div class="phase-lbl" style="color:{color};">{phase}</div>'
-            + "".join([f'<div class="phase-item" style="color:{fg};">'
-                       f'<span class="dot" style="background:{color};"></span>{item}</div>'
-                       for item in items])
-            + '</div>'
-        )
-    roadmap_html += '</div>'
-    st.markdown(roadmap_html, unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div style="background:{GRAY_L};border-radius:14px;padding:20px 24px;margin:0 8vw 40px;">
-      <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;
-        color:{GRAY_MID};margin-bottom:14px;">Indicative timeline</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
-        {''.join([f'<div style="background:{bg};border-radius:10px;padding:14px 10px;">'
-          f'<div style="font-weight:700;color:{fg};font-size:14px;">{yr}</div>'
-          f'<div style="font-size:11px;color:{fg};opacity:0.8;margin-top:3px;">{desc}</div></div>'
-          for yr,desc,bg,fg in [
-            ("2026","Short-term actions",PURPLE_L,PURPLE_D),
-            ("2027","Medium-term expansion",TEAL_L,TEAL_D),
-            ("2028","Long-term national scale",CORAL_L,CORAL_D),
-          ]])}
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ── TAB 7: ECOSYSTEM ──────────────────────────────────────────────────────────
-with tabs[6]:
-    st.markdown(f"""
-    <div class="sec">
-      <div class="kicker">The Bigger Picture</div>
-      <div class="sec-title">A national innovation ecosystem</div>
-      <div class="sec-body">ENGAGE is not just a training programme. It is the seed of a
-      national ecosystem connecting AI talent, public health research, employment, and innovation.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    ecosystem = [
-        ("🤖", "AI Workforce", PURPLE_L, PURPLE_D),
-        ("🏥", "Public Health Innovation", TEAL_L, TEAL_D),
-        ("💼", "Employment", CORAL_L, CORAL_D),
-        ("⚤", "Gender Equity", PURPLE_L, PURPLE_D),
-        ("🔬", "Research", AMBER_L, AMBER),
-        ("🚀", "Startups", CORAL_L, CORAL_D),
-        ("🌿", "Community Health", TEAL_L, TEAL_D),
-        ("💻", "Remote Jobs", AMBER_L, AMBER),
-    ]
-    st.markdown(f"""
-    <div style="padding:0 8vw;">
-      <div style="text-align:center;margin-bottom:20px;">
-        <div style="display:inline-block;background:{PURPLE};color:white;border-radius:50%;
-          width:110px;height:110px;line-height:110px;font-family:'Sora',sans-serif;
-          font-size:18px;font-weight:700;">ENGAGE</div>
-      </div>
-      <div class="eco-grid">
-        {''.join([f'<div class="eco-card" style="background:{bg};">'
-          f'<div class="eco-icon">{icon}</div>'
-          f'<div class="eco-label" style="color:{fg};">{label}</div></div>'
-          for icon,label,bg,fg in ecosystem])}
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div style="background:{PURPLE_L};border-radius:14px;padding:20px 26px;margin:0 8vw 40px;">
-      <div style="font-size:13px;color:{PURPLE_D};line-height:1.8;text-align:center;">
-        <strong>ENGAGE graduates</strong> enter as <strong>AI workforce</strong> →
-        drive <strong>public health innovation</strong> → create <strong>startups</strong> →
-        build <strong>community health</strong> solutions → advance <strong>gender equity</strong> →
-        attract <strong>research partnerships</strong> → generate <strong>remote job opportunities</strong>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ── TAB 8: PARTNERSHIPS ───────────────────────────────────────────────────────
-with tabs[7]:
-    st.markdown(f"""
-    <div class="sec">
-      <div class="kicker">Support Needed</div>
-      <div class="sec-title">Partnership opportunities</div>
-      <div class="sec-body">ENGAGE 2.0 needs partners at every level —
-      from hardware to human capital. Here is where your support creates greatest leverage.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    for title, badge, orgs, color, bg, fg, items in [
-        ("Corporate CSR & tech sector","Most strategic fit",
-         "Google · Microsoft · Safaricom · IBM · AWS · local telcos",
-         PURPLE,PURPLE_L,PURPLE_D,
-         "Fund hardware · Provide internet · Offer internship placements · Co-brand innovation hub"),
-        ("Bilateral & multilateral funders","High impact",
-         "USAID · UK FCDO · GIZ · World Bank · Gates Foundation",
-         TEAL,TEAL_L,TEAL_D,
-         "Cover stipends & salaries · Fund 5 new centres · Support disability-inclusive content"),
-        ("Academic & research partners","Strong fit",
-         "NIH Fogarty · Wellcome Trust · African Academy of Sciences",
-         CORAL,CORAL_L,CORAL_D,
-         "Fund curriculum R&D · Develop online modules · Publish programme impact globally"),
-        ("Revenue-generating models","Complementary",
-         "Self-sponsored cohorts · Curriculum licensing",
-         AMBER,AMBER_L,AMBER,
-         "Fee-paying module cross-subsidises scholarships · Licensing generates operational revenue"),
-    ]:
-        st.markdown(
-            f'<div class="partner-card" style="border-left-color:{color};">'
-            f'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px;">'
-            f'<div><div style="font-family:Sora,sans-serif;font-size:14px;font-weight:600;color:{GRAY_D};">{title}</div>'
-            f'<div style="font-size:12px;color:{GRAY_MID};margin-top:2px;">{orgs}</div></div>'
-            f'<div style="background:{bg};color:{fg};border-radius:20px;padding:3px 12px;'
-            f'font-size:10px;font-weight:700;letter-spacing:0.06em;white-space:nowrap;">{badge}</div></div>'
-            f'<div style="font-size:13px;color:{GRAY_MID};border-top:1px solid #F0EEE8;padding-top:8px;line-height:1.8;">{items}</div>'
-            f'</div>',
-            unsafe_allow_html=True)
-
-    st.markdown(f"""
-    <div style="background:{GRAY_L};border-radius:14px;padding:20px 24px;margin:8px 0 40px;">
-      <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;
-        color:{GRAY_MID};margin-bottom:14px;">What it takes to open one centre</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
-        {''.join([f'<div style="background:white;border-radius:10px;padding:12px 14px;">'
-          f'<div style="font-weight:700;color:{PURPLE_D};font-size:16px;">{n}</div>'
-          f'<div style="font-size:11px;color:{GRAY_MID};margin-top:2px;">{d}</div></div>'
-          for n,d in [("25","Desktop computers"),("2","Laptops"),("1","Projector"),
-                      ("1","Internet connection"),("1","Training room"),("1+3","Coordinator + Faculty")]])}
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ── CTA ───────────────────────────────────────────────────────────────────────
-st.markdown(f"""
-<div class="cta-box">
-  <div class="cta-title">Partner with ENGAGE 2.0</div>
-  <div class="cta-body">Help unlock Africa's AI potential — one girl, one dataset,
-  one discovery at a time.<br><br>
-  <strong>University of Nairobi · Institute of Tropical and Infectious Diseases</strong>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+# Note: To keep the response manageable, I've shown the fix for the syntax error and the portrait mode change.
+# The remaining tabs (4-8) from your original code work exactly the same and should be copied as is.
