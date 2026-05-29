@@ -1,6 +1,19 @@
 import streamlit as st
 import math
+from io import BytesIO
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import mm, inch
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import platform
+import os
 
+# -------------------------------------------------------------------
+# PAGE CONFIG
 st.set_page_config(
     page_title="ENGAGE 2.0 — Visual Story",
     page_icon="🌍",
@@ -8,6 +21,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# -------------------------------------------------------------------
+# COLOR PALETTE
 PURPLE   = "#534AB7"
 PURPLE_L = "#EEEDFE"
 PURPLE_D = "#3C3489"
@@ -24,6 +39,238 @@ GRAY_MID = "#888780"
 GRAY_D   = "#2C2C2A"
 WHITE    = "#FFFFFF"
 
+# -------------------------------------------------------------------
+# PDF GENERATION (Timeline only)
+def register_fonts():
+    """Register Arial as a fallback sans-serif font for PDF"""
+    try:
+        # Try to register Arial (common on Windows/macOS)
+        pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
+        return 'Arial'
+    except:
+        try:
+            # Try Helvetica (common on Unix)
+            pdfmetrics.registerFont(TTFont('Helvetica', 'Helvetica.afm'))
+            return 'Helvetica'
+        except:
+            return 'Helvetica'
+
+def generate_timeline_pdf():
+    """Generate PDF document with project timeline visuals"""
+    buffer = BytesIO()
+    font_name = register_fonts()
+    
+    # Create document with landscape orientation for better timeline display
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
+                            rightMargin=15*mm, leftMargin=15*mm,
+                            topMargin=15*mm, bottomMargin=15*mm)
+    
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontName=font_name,
+        fontSize=24,
+        textColor=colors.HexColor(PURPLE_D[1:]),
+        spaceAfter=12,
+        alignment=TA_CENTER,
+        fontStyle='bold'
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=14,
+        textColor=colors.HexColor(GRAY_MID[1:]),
+        spaceAfter=20,
+        alignment=TA_CENTER
+    )
+    
+    section_title = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Heading2'],
+        fontName=font_name,
+        fontSize=16,
+        textColor=colors.HexColor(PURPLE[1:]),
+        spaceAfter=12,
+        fontStyle='bold'
+    )
+    
+    body_style = ParagraphStyle(
+        'BodyStyle',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=10,
+        textColor=colors.HexColor(GRAY_D[1:]),
+        leading=14
+    )
+    
+    timeline_label = ParagraphStyle(
+        'TimelineLabel',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=9,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor(GRAY_MID[1:])
+    )
+    
+    story = []
+    
+    # Title
+    story.append(Paragraph("ENGAGE 2.0 — Project Timeline", title_style))
+    story.append(Paragraph("From survey insight to national programme", subtitle_style))
+    story.append(Spacer(1, 10*mm))
+    
+    # Timeline table
+    timeline_data = [
+        ["2022", "Survey & research"],
+        ["2023", "Programme design"],
+        ["2024", "Phase 1 launch"],
+        ["2026", "Phase 2 begins"],
+        ["2028", "National scale"],
+    ]
+    
+    # Convert to paragraph objects
+    timeline_table_data = []
+    for year, desc in timeline_data:
+        timeline_table_data.append([
+            Paragraph(f"<b>{year}</b>", ParagraphStyle('YearStyle', parent=styles['Normal'], 
+                       fontName=font_name, fontSize=14, alignment=TA_CENTER,
+                       textColor=colors.HexColor(PURPLE_D[1:]))),
+            Paragraph(desc, ParagraphStyle('DescStyle', parent=styles['Normal'],
+                       fontName=font_name, fontSize=11, alignment=TA_CENTER,
+                       textColor=colors.HexColor(GRAY_MID[1:])))
+        ])
+    
+    timeline_table = Table(timeline_table_data, colWidths=[60, 100])
+    timeline_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor(PURPLE_L[1:])),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor(PURPLE[1:])),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor(PURPLE[1:])),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    story.append(timeline_table)
+    story.append(Spacer(1, 15*mm))
+    
+    # Vision chain section
+    story.append(Paragraph("The ENGAGE Vision Chain", section_title))
+    story.append(Spacer(1, 5*mm))
+    
+    vision_items = [
+        ("Girls & Young Women selected", PURPLE),
+        ("Data Science & AI skills built", PURPLE),
+        ("Public Health applications", TEAL),
+        ("African Innovators emerge", TEAL),
+        ("Healthier Communities", TEAL),
+    ]
+    
+    for item, color in vision_items:
+        story.append(Paragraph(
+            f'• {item}',
+            ParagraphStyle('VisionItem', parent=body_style,
+                          textColor=colors.HexColor(color[1:]),
+                          leftIndent=20,
+                          bulletIndent=10)
+        ))
+        story.append(Spacer(1, 3*mm))
+    
+    story.append(Spacer(1, 10*mm))
+    
+    # Programme pipeline
+    story.append(Paragraph("Programme Pipeline", section_title))
+    story.append(Spacer(1, 5*mm))
+    
+    pipeline_steps = [
+        "Advertisement", "Applications", "Math Contest", "Interviews",
+        "Selection", "Tier 1 Training", "Tier 2 Training", "Tier 3 Training",
+        "Internship", "Employment / Innovation"
+    ]
+    
+    # Create pipeline as 2-row table for better fit
+    steps_per_row = 5
+    pipeline_rows = [pipeline_steps[i:i+steps_per_row] for i in range(0, len(pipeline_steps), steps_per_row)]
+    pipeline_table_data = []
+    for row in pipeline_rows:
+        pipeline_table_data.append([Paragraph(step, ParagraphStyle('StepStyle', parent=styles['Normal'],
+                                    fontName=font_name, fontSize=8, alignment=TA_CENTER,
+                                    textColor=colors.HexColor(PURPLE_D[1:]))) for step in row])
+    
+    pipeline_table = Table(pipeline_table_data, colWidths=[70]*steps_per_row)
+    pipeline_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor(PURPLE_L[1:])),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(pipeline_table)
+    story.append(Spacer(1, 15*mm))
+    
+    # Phase 2 Roadmap
+    story.append(Paragraph("Phase 2.0 — Expansion Roadmap", section_title))
+    story.append(Spacer(1, 5*mm))
+    
+    roadmap_data = [
+        ["Short term", "25 trainees per centre · New UoN UNITID centre · Self-sponsored module · Remote jobs pipeline"],
+        ["Medium term", "Open to boys & young men · Disability-inclusive content · Accessible equipment · Online modules"],
+        ["Long term", "5 new regional centres · Marsabit, Garissa, Kakamega, Kisii, West Pokot · National innovation hub"],
+    ]
+    
+    roadmap_table = Table(roadmap_data, colWidths=[60, 220])
+    roadmap_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor(PURPLE_L[1:])),
+        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor(GRAY_L[1:])),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    story.append(roadmap_table)
+    story.append(Spacer(1, 10*mm))
+    
+    # Footer with call to action
+    story.append(Spacer(1, 10*mm))
+    story.append(Paragraph(
+        "Partner with ENGAGE 2.0 — Help unlock Africa's AI potential.",
+        ParagraphStyle('FooterStyle', parent=body_style,
+                      alignment=TA_CENTER,
+                      textColor=colors.HexColor(TEAL_D[1:]),
+                      fontSize=9,
+                      fontName=font_name)
+    ))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# -------------------------------------------------------------------
+# PDF DOWNLOAD BUTTON FUNCTION
+def download_timeline_button():
+    """Create download button for timeline PDF"""
+    pdf_buffer = generate_timeline_pdf()
+    
+    st.download_button(
+        label="📥 Download Timeline as PDF",
+        data=pdf_buffer,
+        file_name="ENGAGE_2_Timeline.pdf",
+        mime="application/pdf",
+        use_container_width=False,
+    )
+
+# -------------------------------------------------------------------
+# CUSTOM CSS (unchanged)
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap');
@@ -74,6 +321,8 @@ section[data-testid="stSidebar"]{{display:none;}}
 </style>
 """, unsafe_allow_html=True)
 
+# -------------------------------------------------------------------
+# WEBSITE CONTENT (unchanged)
 # ── HERO ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
@@ -93,6 +342,16 @@ st.markdown("""
 
 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
+# -------------------------------------------------------------------
+# ADD DOWNLOAD BUTTON IN SIDEBAR (collapsed but accessible)
+with st.sidebar:
+    st.markdown("### 📄 Document")
+    download_timeline_button()
+    st.markdown("---")
+    st.caption("ENGAGE 2.0 · University of Nairobi")
+
+# -------------------------------------------------------------------
+# TABS
 tabs = st.tabs([
     "🌍  The Problem",
     "🎯  Vision & Why Girls",
